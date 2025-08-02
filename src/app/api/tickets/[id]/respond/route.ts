@@ -8,14 +8,18 @@ const responseSchema = z.object({
   message: z.string().min(1, "Response message is required"),
 });
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(
+  req: Request,
+  context: { params: { id: string } }
+) {
+  const { id } = context.params;
+
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id || !session.user.role) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id: ticketId } = params;
   const userId = session.user.id;
   const role = session.user.role;
 
@@ -27,12 +31,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const parsed = responseSchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: z.treeifyError(parsed.error) }, { status: 400 });
   }
 
   try {
     // Check if ticket exists
-    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
 
     if (!ticket) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
@@ -41,7 +45,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     // Add comment
     const comment = await prisma.comment.create({
       data: {
-        ticketId,
+        ticketId: id,
         userId: userId,
         message: parsed.data.message,
         text: parsed.data.message, // Add 'text' property as required by the type
