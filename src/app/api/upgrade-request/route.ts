@@ -2,8 +2,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { Role } from "@prisma/client";
+import { Role, RequestStatus } from "@prisma/client";
 
+// 🚀 POST - Used by user to request role upgrade
 export async function POST() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -29,44 +30,48 @@ export async function POST() {
 
   return NextResponse.json({ message: "Upgrade request sent", request });
 }
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
-  const admin = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { role: true },
-  });
+// ✅ PATCH - Used by admin to approve a request
+// export async function PATCH(req: Request) {
+//   const session = await getServerSession(authOptions);
+//   if (!session?.user?.id) {
+//     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//   }
 
-  if (admin?.role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+//   const admin = await prisma.user.findUnique({
+//     where: { id: session.user.id },
+//     select: { role: true },
+//   });
 
-  const { id } = params;
+//   if (admin?.role !== "ADMIN") {
+//     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+//   }
 
-  if (!id) {
-    return NextResponse.json({ error: "Missing ticket id" }, { status: 400 });
-  }
+//   const body = await req.json();
+//   const { id } = body;
 
-  const request = await prisma.upgradeRequest.findUnique({
-    where: { id },
-    include: { user: true },
-  });
-  if (!request || request.status !== "PENDING") {
-    return NextResponse.json({ error: "Invalid or already processed" }, { status: 400 });
-  }
+//   if (!id) {
+//     return NextResponse.json({ error: "Missing request ID" }, { status: 400 });
+//   }
 
-  await prisma.user.update({
-    where: { id: request.userId },
-    data: { role: Role.SUPPORT_AGENT },
-  });
+//   const request = await prisma.upgradeRequest.findUnique({
+//     where: { id },
+//     include: { user: true },
+//   });
 
-  await prisma.upgradeRequest.update({
-    where: { id },
-    data: { status: "APPROVED" },
-  });
+//   if (!request || request.status !== "PENDING") {
+//     return NextResponse.json({ error: "Invalid or already processed request" }, { status: 400 });
+//   }
 
-  return NextResponse.json({ message: "User role upgraded" });
-}
+//   await prisma.user.update({
+//     where: { id: request.userId },
+//     data: { role: Role.SUPPORT_AGENT },
+//   });
+
+//   await prisma.upgradeRequest.update({
+//     where: { id },
+//     data: { status: RequestStatus.APPROVED },
+//   });
+
+//   return NextResponse.json({ message: "User role upgraded successfully" });
+// }

@@ -78,7 +78,7 @@ export default function SignInForm() {
 
       <Card className="w-full max-w-md relative z-10 bg-slate-900/60 backdrop-blur-2xl border border-slate-700/50 shadow-2xl shadow-purple-500/10 transition-all duration-500 hover:shadow-purple-500/20 hover:border-purple-400/50 hover:bg-slate-900/70">
         {/* Animated border gradient */}
-        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-purple-500/20 via-blue-500/20 via-cyan-500/20 to-indigo-500/20 opacity-0 transition-opacity duration-500 hover:opacity-100 blur-sm -z-10 animate-pulse"></div>
+        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-purple-500/20 via-cyan-500/20 to-indigo-500/20 opacity-0 transition-opacity duration-500 hover:opacity-100 blur-sm -z-10 animate-pulse"></div>
 
         <CardHeader className="text-center space-y-6 pb-8">
           <div className="mx-auto w-20 h-20 bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-500 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-purple-500/30 relative overflow-hidden group">
@@ -87,7 +87,7 @@ export default function SignInForm() {
               <div className="w-6 h-6 bg-gradient-to-br from-purple-400 to-cyan-400 rounded-full animate-pulse"></div>
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-blue-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent animate-pulse">
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-purple-400  via-cyan-400 to-indigo-400 bg-clip-text text-transparent animate-pulse">
             Welcome to QuickDesk
           </CardTitle>
         </CardHeader>
