@@ -12,24 +12,9 @@ const ticketSchema = z.object({
   attachment: z.string().url().optional(),
 });
 
-// ===================== GET Tickets =====================
 export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = session.user.id;
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
-
   const { searchParams } = new URL(req.url);
+  const type = searchParams.get("type");
   const status = searchParams.get("status");
   const category = searchParams.get("category");
   const search = searchParams.get("search");
@@ -40,18 +25,19 @@ export async function GET(req: Request) {
 
   const where: any = {};
 
-  // Role-based access control
-  if (user.role === "USER") {
-    where.userId = userId;
-  } else if (user.role === "SUPPORT_AGENT") {
-    where.status = { in: ["OPEN", "IN_PROGRESS"] };
+  // Only allow type=ALL for public access
+  if (type === "MINE") {
+    // Require login for personal tickets
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    where.userId = session.user.id;
   }
-  // ADMIN sees all tickets
 
+  // Filters
   if (status) where.status = status;
-  if (category) {
-    where.category = { name: category };
-  }
+  if (category) where.category = { name: category };
   if (search) {
     where.OR = [
       { title: { contains: search, mode: "insensitive" } },
@@ -65,13 +51,9 @@ export async function GET(req: Request) {
     skip: (page - 1) * limit,
     take: limit,
     include: {
-      user: { select: { name: true, email: true, role: true } },
-      comments: {
-        include: {
-          user: { select: { name: true } },
-        },
-      },
+      user: { select: { name: true } }, // Limited public info
       category: true,
+      comments: false,
     },
   });
 
@@ -87,6 +69,7 @@ export async function GET(req: Request) {
     },
   });
 }
+
 
 // ===================== POST Create Ticket =====================
 export async function POST(req: Request) {

@@ -5,7 +5,6 @@ import NavbarMain from "@/components/others/navbar"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 
-
 // View and status options
 const viewOptions = [
   { value: "all", label: "All Queries" },
@@ -27,7 +26,13 @@ export default function Page() {
   const fetchTickets = async () => {
     setLoading(true)
     try {
-      const response = await fetch("/api/tickets?type=ALL")
+      const params = new URLSearchParams({ type: "MINE" })
+
+      if (status !== "All") {
+        params.append("status", status)
+      }
+
+      const response = await fetch(`/api/tickets?${params.toString()}`)
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -36,7 +41,6 @@ export default function Page() {
       const data = await response.json()
       console.log("Fetched tickets:", data)
 
-      // Handle different possible response structures
       if (Array.isArray(data)) {
         setTickets(data)
       } else if (data.tickets && Array.isArray(data.tickets)) {
@@ -56,16 +60,12 @@ export default function Page() {
     }
   }
 
-  // Fetch tickets on component mount
   useEffect(() => {
     fetchTickets()
   }, [])
 
-  // Refetch when view type changes
   useEffect(() => {
     if (viewType !== "all") {
-      // You can modify the API call based on view type
-      // For now, we'll just refetch all tickets
       fetchTickets()
     }
   }, [viewType])
@@ -73,20 +73,19 @@ export default function Page() {
   return (
     <>
       <NavbarMain/>
-    <MainPage
-      viewType={viewType}
-      setViewType={setViewType}
-      status={status}
-      setStatus={setStatus}
-      search={search}
-      setSearch={setSearch}
-      loading={loading}
-      tickets={tickets}
-      viewOptions={viewOptions}
-      statusOptions={statusOptions}
-      onRefresh={fetchTickets}
+      <MainPage
+        viewType={viewType}
+        setViewType={setViewType}
+        status={status}
+        setStatus={setStatus}
+        search={search}
+        setSearch={setSearch}
+        loading={loading}
+        tickets={tickets}
+        viewOptions={viewOptions}
+        statusOptions={statusOptions}
+        onRefresh={fetchTickets}
       />
     </>
-      
   )
 }

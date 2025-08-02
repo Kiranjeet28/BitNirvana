@@ -31,7 +31,7 @@ export default function SignInForm() {
 
       if (res.ok) {
         toast.success("Logged in successfully")
-        window.location.href = "/dashboard"
+        window.location.href = "/"
       } else {
         toast.error(data.error || "Login failed")
       }
