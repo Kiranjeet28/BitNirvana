@@ -51,6 +51,7 @@ export async function POST(
     const comment = await prisma.comment.create({
       data: {
         text: parsed.data.text,
+        message: parsed.data.text, // or set this to another appropriate value
         ticketId,
         userId,
       },

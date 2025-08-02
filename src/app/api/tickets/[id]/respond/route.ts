@@ -44,6 +44,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         ticketId,
         userId: userId,
         message: parsed.data.message,
+        text: parsed.data.message, // Add 'text' property as required by the type
       },
     });
 
