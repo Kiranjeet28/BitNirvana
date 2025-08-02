@@ -4,10 +4,7 @@ import { prisma } from "@/lib/prisma";
 import type { Role } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 
-export async function PATCH(
-  _: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -22,22 +19,30 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const request = await prisma.upgradeRequest.findUnique({
-    where: { id: params.id },
+  // Extract id from the URL
+  const url = new URL(request.url);
+  const id = url.pathname.split("/").pop();
+
+  if (!id) {
+    return NextResponse.json({ error: "Missing upgrade request id" }, { status: 400 });
+  }
+
+  const upgradeRequest = await prisma.upgradeRequest.findUnique({
+    where: { id },
     include: { user: true },
   });
 
-  if (!request || !request.userId) {
+  if (!upgradeRequest || !upgradeRequest.userId) {
     return NextResponse.json({ error: "Upgrade request not found" }, { status: 404 });
   }
 
   await prisma.user.update({
-    where: { id: request.userId },
+    where: { id: upgradeRequest.userId },
     data: { role: "QUERY_RESOLVER" as Role },
   });
 
   await prisma.upgradeRequest.update({
-    where: { id: params.id },
+    where: { id },
     data: { status: "APPROVED" },
   });
 
