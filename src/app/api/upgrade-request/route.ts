@@ -29,11 +29,7 @@ export async function POST() {
 
   return NextResponse.json({ message: "Upgrade request sent", request });
 }
-
-export async function PATCH(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -48,8 +44,16 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Parse the request body to get the ticket id
+  const body = await req.json();
+  const { id } = body;
+
+  if (!id) {
+    return NextResponse.json({ error: "Missing ticket id" }, { status: 400 });
+  }
+
   const request = await prisma.upgradeRequest.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { user: true },
   });
   if (!request || request.status !== "PENDING") {
@@ -62,7 +66,7 @@ export async function PATCH(
   });
 
   await prisma.upgradeRequest.update({
-    where: { id: params.id },
+    where: { id },
     data: { status: "APPROVED" },
   });
 
