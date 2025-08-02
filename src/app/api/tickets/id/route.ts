@@ -3,14 +3,19 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const ticketId = params.id;
+  const body = await req.json();
+  const ticketId = body.ticketId;
+
+  if (!ticketId) {
+    return NextResponse.json({ error: "Missing ticketId" }, { status: 400 });
+  }
 
   try {
     const ticket = await prisma.ticket.findUnique({

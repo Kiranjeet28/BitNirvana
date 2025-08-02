@@ -6,18 +6,20 @@ import { z } from "zod";
 
 const commentSchema = z.object({
   text: z.string().min(1, "Comment text is required"),
+  ticketId: z.string()
 });
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(
+  req: Request,
+) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const ticketId = params.id;
   const userId = session.user.id;
-
+  
   const body = await req.json();
+  const ticketId = body.ticketId;
   const parsed = commentSchema.safeParse(body);
 
   if (!parsed.success) {
