@@ -4,23 +4,31 @@ import { notFound } from "next/navigation";
 import { RespondForm } from "./respond-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
+// Define expected page props
 interface PageProps {
-  params: { id: string };
+  params: {
+    id: string;
+  };
 }
 
 export default async function TicketDetailPage({ params }: PageProps) {
+  // Get session and user role
   const session = await getServerSession(authOptions);
   const role = session?.user?.role;
 
+  // Fetch ticket by ID
   const res = await fetch(
     `${process.env.NEXTAUTH_URL}/api/tickets/view?id=${params.id}`,
     { cache: "no-store" }
   );
 
+  // If ticket not found, show 404 page
   if (!res.ok) {
     notFound();
   }
 
+  // Parse ticket data from API response
   const { ticket } = await res.json();
 
   return (
@@ -63,7 +71,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
         </CardContent>
       </Card>
 
-      {/* Comments */}
+      {/* Comments Section */}
       <div>
         <h2 className="text-xl font-semibold mb-2">Conversation</h2>
         {ticket.comments.length === 0 ? (
@@ -90,7 +98,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
         )}
       </div>
 
-      {/* Respond Form (only for SUPPORT_AGENT or ADMIN) */}
+      {/* Respond Form – only visible to Support Agent or Admin */}
       {(role === "SUPPORT_AGENT" || role === "ADMIN") && (
         <RespondForm ticketId={params.id} />
       )}
