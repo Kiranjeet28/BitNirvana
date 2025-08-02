@@ -29,7 +29,7 @@ export async function POST() {
 
   return NextResponse.json({ message: "Upgrade request sent", request });
 }
-export async function PATCH(req: Request) {
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,9 +44,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Parse the request body to get the ticket id
-  const body = await req.json();
-  const { id } = body;
+  const { id } = params;
 
   if (!id) {
     return NextResponse.json({ error: "Missing ticket id" }, { status: 400 });
