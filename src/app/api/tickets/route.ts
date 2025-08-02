@@ -1,0 +1,121 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const ticketSchema = z.object({
+  subject: z.string().min(5),
+  description: z.string().min(10),
+  category: z.string().min(2),
+  attachment: z.string().url().optional(),
+});
+
+
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const userId = session.user.id;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get("status");
+  const category = searchParams.get("category");
+  const search = searchParams.get("search");
+  const sort = searchParams.get("sort") || "createdAt";
+  const order = searchParams.get("order") === "asc" ? "asc" : "desc";
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const limit = parseInt(searchParams.get("limit") || "10", 10);
+
+  const where: any = {};
+
+  // 🟢 Role-based ticket access
+  if (user.role === "USER") {
+    where.createdById = userId;
+  } else if (user.role === "QUERY_RESOLVER") {
+    where.status = { in: ["OPEN", "IN_PROGRESS"] };
+  }
+  // ADMIN sees all — no filtering by user
+
+  // 🧠 Additional filters
+  if (status) where.status = status;
+  if (category) where.category = category;
+  if (search) {
+    where.OR = [
+      { subject: { contains: search, mode: "insensitive" } },
+      { description: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const tickets = await prisma.ticket.findMany({
+    where,
+    orderBy: { [sort]: order },
+    skip: (page - 1) * limit,
+    take: limit,
+    include: {
+      createdBy: { select: { name: true, email: true, role: true } },
+      comments: true,
+    },
+  });
+
+  const totalCount = await prisma.ticket.count({ where });
+
+  return NextResponse.json({
+    tickets,
+    meta: {
+      total: totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit),
+    },
+  });
+}
+
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const userId = session.user.id;
+  const body = await req.json();
+  const parsed = ticketSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const { subject, description, category, attachment } = parsed.data;
+
+  const ticket = await prisma.ticket.create({
+    data: {
+      subject,
+      description,
+      category,
+      attachment,
+      status: "OPEN",
+      createdById: userId,
+    },
+  });
+
+  await prisma.ticketStatusHistory.create({
+    data: {
+      ticketId: ticket.id,
+      status: "OPEN",
+      changedById: userId,
+    },
+  });
+
+  return NextResponse.json({ message: "Ticket created", ticket }, { status: 201 });
+}
