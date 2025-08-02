@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+// Schema for creating a new ticket
 const ticketSchema = z.object({
   subject: z.string().min(5),
   description: z.string().min(10),
@@ -11,7 +12,7 @@ const ticketSchema = z.object({
   attachment: z.string().url().optional(),
 });
 
-
+// ===================== GET Tickets =====================
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -19,7 +20,6 @@ export async function GET(req: Request) {
   }
 
   const userId = session.user.id;
-
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { role: true },
@@ -40,20 +40,21 @@ export async function GET(req: Request) {
 
   const where: any = {};
 
-  // 🟢 Role-based ticket access
+  // Role-based access control
   if (user.role === "USER") {
-    where.createdById = userId;
-  } else if (user.role === "QUERY_RESOLVER") {
+    where.userId = userId;
+  } else if (user.role === "SUPPORT_AGENT") {
     where.status = { in: ["OPEN", "IN_PROGRESS"] };
   }
-  // ADMIN sees all — no filtering by user
+  // ADMIN sees all tickets
 
-  // 🧠 Additional filters
   if (status) where.status = status;
-  if (category) where.category = category;
+  if (category) {
+    where.category = { name: category };
+  }
   if (search) {
     where.OR = [
-      { subject: { contains: search, mode: "insensitive" } },
+      { title: { contains: search, mode: "insensitive" } },
       { description: { contains: search, mode: "insensitive" } },
     ];
   }
@@ -64,8 +65,13 @@ export async function GET(req: Request) {
     skip: (page - 1) * limit,
     take: limit,
     include: {
-      createdBy: { select: { name: true, email: true, role: true } },
-      comments: true,
+      user: { select: { name: true, email: true, role: true } },
+      comments: {
+        include: {
+          user: { select: { name: true } },
+        },
+      },
+      category: true,
     },
   });
 
@@ -82,6 +88,7 @@ export async function GET(req: Request) {
   });
 }
 
+// ===================== POST Create Ticket =====================
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -98,24 +105,39 @@ export async function POST(req: Request) {
 
   const { subject, description, category, attachment } = parsed.data;
 
-  const ticket = await prisma.ticket.create({
-    data: {
-      subject,
-      description,
-      category,
-      attachment,
-      status: "OPEN",
-      createdById: userId,
-    },
-  });
+  try {
+    // Find the category by name to get its id
+    const categoryRecord = await prisma.category.findUnique({
+      where: { name: category },
+      select: { id: true },
+    });
 
-  await prisma.ticketStatusHistory.create({
-    data: {
-      ticketId: ticket.id,
-      status: "OPEN",
-      changedById: userId,
-    },
-  });
+    if (!categoryRecord) {
+      return NextResponse.json({ error: "Category not found" }, { status: 400 });
+    }
 
-  return NextResponse.json({ message: "Ticket created", ticket }, { status: 201 });
+    const ticket = await prisma.ticket.create({
+      data: {
+        title: subject,
+        description,
+        attachments: attachment ? [attachment] : [],
+        status: "OPEN",
+        userId,
+        categoryId: categoryRecord.id,
+      },
+    });
+
+    await prisma.ticketStatusHistory.create({
+      data: {
+        ticketId: ticket.id,
+        oldStatus: "OPEN",
+        changedById: userId,
+      },
+    });
+
+    return NextResponse.json({ message: "Ticket created", ticket }, { status: 201 });
+  } catch (error) {
+    console.error("Error creating ticket:", error);
+    return NextResponse.json({ error: "Failed to create ticket" }, { status: 500 });
+  }
 }

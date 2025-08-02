@@ -16,19 +16,22 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
       include: {
-        createdBy: true,
+        user: { select: { id: true, name: true, role: true } },
         comments: {
           include: {
             user: { select: { name: true, role: true } },
           },
           orderBy: { createdAt: "asc" },
         },
-        statusChanges: {
+        statusLog: {
           include: {
             changedBy: { select: { name: true, role: true } },
           },
-          orderBy: { changedAt: "asc" },
+          orderBy: { timestamp: "asc" },
         },
+        category: { select: { name: true } },
+        upvotes: true,
+        downvotes: true,
       },
     });
 
@@ -36,10 +39,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
 
-    const isOwner = ticket.createdBy.id === userId;
-    const viewer = await prisma.user.findUnique({ where: { id: userId } });
+    const isOwner = ticket.user.id === userId;
 
-    if (!isOwner && viewer?.role !== "ADMIN" && viewer?.role !== "QUERY_RESOLVER") {
+    const viewer = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    const isPrivileged =
+      viewer?.role === "ADMIN" || viewer?.role === "SUPPORT_AGENT";
+
+    if (!isOwner && !isPrivileged) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

@@ -26,7 +26,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    include: { createdBy: true },
+    include: { user: true },
   });
 
   if (!ticket) {
@@ -38,23 +38,28 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     select: { role: true },
   });
 
-  const isOwner = ticket.createdBy.id === userId;
-  const isAdminOrResolver = currentUser?.role === "ADMIN" || currentUser?.role === "QUERY_RESOLVER";
+  const isOwner = ticket.user.id === userId;
+  const isAdminOrResolver = currentUser?.role === "ADMIN" || currentUser?.role === "SUPPORT_AGENT";
 
   if (!isOwner && !isAdminOrResolver) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const comment = await prisma.comment.create({
-    data: {
-      text: parsed.data.text,
-      ticketId,
-      userId,
-    },
-    include: {
-      user: { select: { name: true, role: true } },
-    },
-  });
+  try {
+    const comment = await prisma.comment.create({
+      data: {
+        text: parsed.data.text,
+        ticketId,
+        userId,
+      },
+      include: {
+        user: { select: { name: true, role: true } },
+      },
+    });
 
-  return NextResponse.json({ message: "Comment added", comment }, { status: 201 });
+    return NextResponse.json({ message: "Comment added", comment }, { status: 201 });
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    return NextResponse.json({ error: "Failed to add comment" }, { status: 500 });
+  }
 }
