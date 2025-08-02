@@ -1,24 +1,27 @@
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id || !session.user.role) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const ticketId = params.id;
+  const searchParams = req.nextUrl.searchParams;
+  const ticketId = searchParams.get("id");
+
+  if (!ticketId) {
+    return NextResponse.json({ error: "Ticket ID is required" }, { status: 400 });
+  }
 
   try {
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
       include: {
-        user: {
-          select: { name: true, email: true },
-        },
+        user: { select: { name: true, email: true } },
         category: true,
         comments: {
           include: {
@@ -34,8 +37,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 
     return NextResponse.json({ ticket }, { status: 200 });
-  } catch (error) {
-    console.error("Error fetching ticket:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } catch (err) {
+    console.error("Error fetching ticket:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

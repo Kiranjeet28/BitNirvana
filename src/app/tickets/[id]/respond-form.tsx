@@ -26,15 +26,18 @@ export function RespondForm({ ticketId }: Props) {
 
   const onSubmit = async (values: z.infer<typeof responseSchema>) => {
     setLoading(true);
-    try {
-      const res = await fetch(`/api/ticket/${ticketId}/respond`, {
+     try {
+      const res = await fetch("/api/tickets/respond", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ticketId,
+          message: values.message,
+        }),
       });
-
       const result = await res.json();
-
       if (!res.ok) {
         throw new Error(result.error || "Failed to respond");
       }

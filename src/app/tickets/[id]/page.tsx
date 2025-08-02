@@ -1,7 +1,7 @@
-import { RespondForm } from "./respond-form";
 import { authOptions } from "@/lib/auth";
 import { getServerSession } from "next-auth";
 import { notFound } from "next/navigation";
+import { RespondForm } from "./respond-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -13,12 +13,10 @@ export default async function TicketDetailPage({ params }: PageProps) {
   const session = await getServerSession(authOptions);
   const role = session?.user?.role;
 
-  const res = await fetch(`${process.env.NEXTAUTH_URL}/api/ticket/${params.id}/view`, {
-    cache: "no-store",
-    headers: {
-      Cookie: "", // allow server-side fetch
-    },
-  });
+  const res = await fetch(
+    `${process.env.NEXTAUTH_URL}/api/tickets/view?id=${params.id}`,
+    { cache: "no-store" }
+  );
 
   if (!res.ok) {
     notFound();
@@ -33,12 +31,16 @@ export default async function TicketDetailPage({ params }: PageProps) {
       <Card>
         <CardContent className="p-6 space-y-2">
           <div className="text-xl font-semibold">{ticket.title}</div>
-          <div className="text-muted-foreground">By {ticket.user.name} ({ticket.user.email})</div>
+          <div className="text-muted-foreground">
+            By {ticket.user.name} ({ticket.user.email})
+          </div>
           <div>
             <Badge variant="outline">{ticket.category.name}</Badge>
-            <Badge variant="default" className="ml-2">{ticket.status}</Badge>
+            <Badge variant="default" className="ml-2">
+              {ticket.status}
+            </Badge>
           </div>
-          <div className="mt-4">{ticket.description}</div>
+          <div className="mt-4 whitespace-pre-wrap">{ticket.description}</div>
 
           {ticket.attachments?.length > 0 && (
             <div className="mt-4">
@@ -46,7 +48,14 @@ export default async function TicketDetailPage({ params }: PageProps) {
               <ul className="list-disc list-inside">
                 {ticket.attachments.map((att: string, idx: number) => (
                   <li key={idx}>
-                    <a className="text-blue-500 underline" href={att} target="_blank">{att}</a>
+                    <a
+                      className="text-blue-500 underline"
+                      href={att}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {att}
+                    </a>
                   </li>
                 ))}
               </ul>
@@ -66,10 +75,15 @@ export default async function TicketDetailPage({ params }: PageProps) {
               <Card key={comment.id}>
                 <CardContent className="p-4 space-y-1">
                   <div className="text-sm font-semibold">
-                    {comment.author.name} <span className="text-muted-foreground text-xs">({comment.author.role})</span>
+                    {comment.author.name}{" "}
+                    <span className="text-muted-foreground text-xs">
+                      ({comment.author.role})
+                    </span>
                   </div>
                   <div>{comment.message}</div>
-                  <div className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(comment.createdAt).toLocaleString()}
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -77,7 +91,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
         )}
       </div>
 
-      {/* Respond Form */}
+      {/* Respond Form (only for SUPPORT_AGENT or ADMIN) */}
       {(role === "SUPPORT_AGENT" || role === "ADMIN") && (
         <RespondForm ticketId={params.id} />
       )}
