@@ -12,8 +12,9 @@ model User {
   name            String
   email           String           @unique
   password        String
-  role            Role             @default(END_USER)
-  language        String?          // e.g., 'en', 'hi'
+  emailVerified   DateTime?        // Optional: for future email verification
+  role            Role             @default(USER)
+  language        String?
   profileImageUrl String?
   interests       String[]
   createdTickets  Ticket[]         @relation("TicketCreator")
@@ -22,11 +23,14 @@ model User {
   downvotes       Downvote[]
   upgradeRequests UpgradeRequest[]
   createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   statusChanges   TicketStatusHistory[] @relation("ChangedBy")
 }
 
+
+
 enum Role {
-  END_USER
+  USER
   SUPPORT_AGENT
   ADMIN
 }
