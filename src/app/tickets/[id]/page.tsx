@@ -1,25 +1,31 @@
+"use client";
 import { authOptions } from "@/lib/auth";
 import { getServerSession } from "next-auth";
 import { notFound } from "next/navigation";
 import { RespondForm } from "./respond-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
 
 // Define expected page props
 interface PageProps {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }>;
 }
+
 
 export default async function TicketDetailPage({ params }: PageProps) {
   // Get session and user role
   const session = await getServerSession(authOptions);
   const role = session?.user?.role;
-
+  const [roomId, setRoomId] = useState<string | null>(null);
+  useEffect(() => {
+    params.then((resolvedParams) => {
+      setRoomId(resolvedParams.id);
+    });
+  }, [params]);
   // Fetch ticket by ID
   const res = await fetch(
-    `${process.env.NEXTAUTH_URL}/api/tickets/view?id=${params.id}`,
+    `${process.env.NEXTAUTH_URL}/api/tickets/view?id=${roomId}`,
     { cache: "no-store" }
   );
 
@@ -99,8 +105,8 @@ export default async function TicketDetailPage({ params }: PageProps) {
       </div>
 
       {/* Respond Form – only visible to Support Agent or Admin */}
-      {(role === "SUPPORT_AGENT" || role === "ADMIN") && (
-        <RespondForm ticketId={params.id} />
+      {(role === "SUPPORT_AGENT" || role === "ADMIN") && roomId && (
+        <RespondForm ticketId={roomId} />
       )}
     </div>
   );
