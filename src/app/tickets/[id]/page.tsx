@@ -4,10 +4,9 @@ import { notFound } from "next/navigation";
 import { RespondForm } from "./respond-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-type PageProps = {
+interface PageProps {
   params: { id: string };
-};
+}
 
 export default async function TicketDetailPage({ params }: PageProps) {
   const session = await getServerSession(authOptions);
